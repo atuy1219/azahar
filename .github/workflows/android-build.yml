@@ -33,4 +33,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: azahar-android-debug-apk
-          path: '**/build/outputs/apk/debug/*.apk'
+          path: '**src/android/build/outputs/apk/debug/*.apk'
