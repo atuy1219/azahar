@@ -857,6 +857,10 @@ private:
      */
     void SetPostDataTypeSize(Kernel::HLERequestContext& ctx);
 
+
+    void CreateRootCertChain(Kernel::HLERequestContext& ctx);
+    void RootCertChainAddDefaultCert(Kernel::HLERequestContext& ctx);
+
     /**
      * HTTP_C::Finalize service function
      *  Outputs:
