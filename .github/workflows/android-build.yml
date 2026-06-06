@@ -24,6 +24,7 @@ jobs:
           cache: 'gradle'
 
       - name: Build APK (Debug)
+        working-directory: src/android
         run: |
           chmod +x ./gradlew
           ./gradlew assembleDebug
