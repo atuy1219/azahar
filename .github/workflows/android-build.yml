@@ -17,7 +17,7 @@ jobs:
           submodules: recursive
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -33,10 +33,12 @@ jobs:
           find app/build/outputs/apk -name "*.apk" -exec cp {} app/build/bundle/ \;
 
       - name: Pack
-        run: ../../../.ci/pack.sh
+        run: bash ../../../.ci/pack.sh
         working-directory: src/android/app
         env:
           UNPACKED: 1
+          OS: android
+          TARGET: debug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v7
