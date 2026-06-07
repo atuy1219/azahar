@@ -30,7 +30,7 @@ jobs:
           ./gradlew assembleDebug
           
           mkdir -p app/build/bundle
-          cp app/build/outputs/apk/debug/*.apk app/build/bundle/
+          find app/build/outputs/apk -name "*.apk" -exec cp {} app/build/bundle/ \;
 
       - name: Pack
         run: ../../../.ci/pack.sh
