@@ -28,9 +28,18 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew assembleDebug
+          
+          mkdir -p app/build/bundle
+          cp app/build/outputs/apk/debug/*.apk app/build/bundle/
+
+      - name: Pack
+        run: ../../../.ci/pack.sh
+        working-directory: src/android/app
+        env:
+          UNPACKED: 1
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v7
         with:
           name: azahar-android-debug-apk
-          path: 'src/android/**/build/outputs/apk/debug/*.apk'
+          path: src/android/app/artifacts/
