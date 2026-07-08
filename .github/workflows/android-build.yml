@@ -101,6 +101,9 @@ jobs:
       - name: Apply YW2 SVC wait trace patch
         run: python3 .github/scripts/yw2_svc_wait_trace_patch.py
 
+      - name: Apply YW2 FA read trace patch
+        run: python3 .github/scripts/yw2_fa_read_trace_patch.py
+
       - name: Apply YW2 ARM PC trace patch
         run: python3 .github/scripts/yw2_arm_pc_trace_patch.py
 
@@ -211,6 +214,9 @@ jobs:
 
       - name: Apply YW2 SVC wait trace patch
         run: python3 .github/scripts/yw2_svc_wait_trace_patch.py
+
+      - name: Apply YW2 FA read trace patch
+        run: python3 .github/scripts/yw2_fa_read_trace_patch.py
 
       - name: Apply YW2 ARM PC trace patch
         run: python3 .github/scripts/yw2_arm_pc_trace_patch.py
