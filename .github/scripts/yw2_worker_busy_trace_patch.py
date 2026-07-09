@@ -74,6 +74,18 @@ bool YW2WorkerBusyTraceEnabled() {
         return "post_channel_wait_f0";
     case 0x00337744:
         return "destroy_branch";
+    case 0x0033807c:
+        return "connection_status_update_7c";
+    case 0x0033809c:
+        return "connection_status_event_wait";
+    case 0x003380b0:
+        return "connection_status_wait_b0";
+    case 0x003380d0:
+        return "connection_status_wait_d0";
+    case 0x0033bd24:
+        return "post_channel_callback";
+    case 0x0033bd54:
+        return "post_channel_return";
     case 0x00339994:
         return "worker_busy_gate";
     case 0x00339d8c:
@@ -109,22 +121,34 @@ int YW2WorkerTargetIndex(u32 target) {
         return 4;
     case 0x00337744:
         return 5;
-    case 0x00339994:
+    case 0x0033807c:
         return 6;
-    case 0x00339d8c:
+    case 0x0033809c:
         return 7;
-    case 0x00339c90:
+    case 0x003380b0:
         return 8;
-    case 0x0033c0a0:
+    case 0x003380d0:
         return 9;
-    case 0x0033b8bc:
+    case 0x0033bd24:
         return 10;
-    case 0x0033727c:
+    case 0x0033bd54:
         return 11;
-    case 0x00364d20:
+    case 0x00339994:
         return 12;
-    case 0x003660e8:
+    case 0x00339d8c:
         return 13;
+    case 0x00339c90:
+        return 14;
+    case 0x0033c0a0:
+        return 15;
+    case 0x0033b8bc:
+        return 16;
+    case 0x0033727c:
+        return 17;
+    case 0x00364d20:
+        return 18;
+    case 0x003660e8:
+        return 19;
     default:
         return -1;
     }
@@ -139,6 +163,12 @@ u32 YW2MatchWorkerTarget(u32 pc) {
     case 0x003376c0:
     case 0x003376f0:
     case 0x00337744:
+    case 0x0033807c:
+    case 0x0033809c:
+    case 0x003380b0:
+    case 0x003380d0:
+    case 0x0033bd24:
+    case 0x0033bd54:
     case 0x00339994:
     case 0x00339d8c:
     case 0x00339c90:
@@ -160,7 +190,7 @@ void YW2TraceWorkerBusyPC(ARM_Dynarmic& cpu, Memory::MemorySystem& memory, u32 t
     }
 
     const int index = YW2WorkerTargetIndex(target);
-    static std::atomic<u64> counters[14]{};
+    static std::atomic<u64> counters[20]{};
     const u64 hit_count = index >= 0 ? ++counters[index] : 1;
 
     const u32 r0 = cpu.GetReg(0);
@@ -188,6 +218,8 @@ void YW2TraceWorkerBusyPC(ARM_Dynarmic& cpu, Memory::MemorySystem& memory, u32 t
     u32 room_worker_busy = 0xffffffff;
     if (target == 0x0033b8bc || target == 0x0033727c || target == 0x00337680 ||
         target == 0x003376c0 || target == 0x003376f0 || target == 0x00337744 ||
+        target == 0x0033807c || target == 0x0033809c || target == 0x003380b0 ||
+        target == 0x003380d0 || target == 0x0033bd24 || target == 0x0033bd54 ||
         target == 0x00364d20) {
         room_worker = YW2Read32Or(memory, r0 + 0x2a70, 0);
         room_worker_busy = YW2Read32Or(memory, room_worker + 0x3eec, 0xffffffff);
