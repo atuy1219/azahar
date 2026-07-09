@@ -72,13 +72,15 @@ patch_once(
 path.write_text(text)
 print("Applied YW2 ARM PC trace runtime fix patch")
 
-extra_patch = Path(".github/scripts/yw2_arm_runtime_alias_patch.py")
-if extra_patch.exists():
-    exec(extra_patch.read_text(), {"__name__": "__main__"})
-
+# Apply worker-busy trace before the runtime alias patch. The alias patch rewrites the existing
+# MemoryReadCode/YW2MatchTraceTarget text, so applying it first makes the worker patch markers stale.
 worker_patch = Path(".github/scripts/yw2_worker_busy_trace_patch.py")
 if worker_patch.exists():
     exec(worker_patch.read_text(), {"__name__": "__main__"})
+
+extra_patch = Path(".github/scripts/yw2_arm_runtime_alias_patch.py")
+if extra_patch.exists():
+    exec(extra_patch.read_text(), {"__name__": "__main__"})
 
 # Do not chain yw2_arm_func_runtime_trace_patch.py here.
 # Its Step-based runtime tracing can break SendSyncRequest/server-session assumptions.
