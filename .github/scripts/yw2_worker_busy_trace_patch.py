@@ -62,6 +62,18 @@ bool YW2WorkerBusyTraceEnabled() {
 """,
         r"""const char* YW2WorkerTargetName(u32 target) {
     switch (target) {
+    case 0x0012e3e4:
+        return "thread_entry_candidate";
+    case 0x002055ac:
+        return "thread_wait_check";
+    case 0x00337680:
+        return "post_channel_wait_80";
+    case 0x003376c0:
+        return "post_channel_wait_c0";
+    case 0x003376f0:
+        return "post_channel_wait_f0";
+    case 0x00337744:
+        return "destroy_branch";
     case 0x00339994:
         return "worker_busy_gate";
     case 0x00339d8c:
@@ -85,22 +97,34 @@ bool YW2WorkerBusyTraceEnabled() {
 
 int YW2WorkerTargetIndex(u32 target) {
     switch (target) {
-    case 0x00339994:
+    case 0x0012e3e4:
         return 0;
-    case 0x00339d8c:
+    case 0x002055ac:
         return 1;
-    case 0x00339c90:
+    case 0x00337680:
         return 2;
-    case 0x0033c0a0:
+    case 0x003376c0:
         return 3;
-    case 0x0033b8bc:
+    case 0x003376f0:
         return 4;
-    case 0x0033727c:
+    case 0x00337744:
         return 5;
-    case 0x00364d20:
+    case 0x00339994:
         return 6;
-    case 0x003660e8:
+    case 0x00339d8c:
         return 7;
+    case 0x00339c90:
+        return 8;
+    case 0x0033c0a0:
+        return 9;
+    case 0x0033b8bc:
+        return 10;
+    case 0x0033727c:
+        return 11;
+    case 0x00364d20:
+        return 12;
+    case 0x003660e8:
+        return 13;
     default:
         return -1;
     }
@@ -109,6 +133,12 @@ int YW2WorkerTargetIndex(u32 target) {
 u32 YW2MatchWorkerTarget(u32 pc) {
     const u32 normalized = pc & ~u32{1};
     switch (normalized) {
+    case 0x0012e3e4:
+    case 0x002055ac:
+    case 0x00337680:
+    case 0x003376c0:
+    case 0x003376f0:
+    case 0x00337744:
     case 0x00339994:
     case 0x00339d8c:
     case 0x00339c90:
@@ -130,7 +160,7 @@ void YW2TraceWorkerBusyPC(ARM_Dynarmic& cpu, Memory::MemorySystem& memory, u32 t
     }
 
     const int index = YW2WorkerTargetIndex(target);
-    static std::atomic<u64> counters[8]{};
+    static std::atomic<u64> counters[14]{};
     const u64 hit_count = index >= 0 ? ++counters[index] : 1;
 
     const u32 r0 = cpu.GetReg(0);
@@ -147,9 +177,18 @@ void YW2TraceWorkerBusyPC(ARM_Dynarmic& cpu, Memory::MemorySystem& memory, u32 t
     const u32 r1_busy = YW2Read32Or(memory, r1 + 0x3eec, 0xffffffff);
     const u32 r2_busy = YW2Read32Or(memory, r2 + 0x3eec, 0xffffffff);
 
+    const u32 sp00 = YW2Read32Or(memory, sp + 0x00, 0xffffffff);
+    const u32 sp04 = YW2Read32Or(memory, sp + 0x04, 0xffffffff);
+    const u32 sp08 = YW2Read32Or(memory, sp + 0x08, 0xffffffff);
+    const u32 sp0c = YW2Read32Or(memory, sp + 0x0c, 0xffffffff);
+    const u32 sp10 = YW2Read32Or(memory, sp + 0x10, 0xffffffff);
+    const u32 sp14 = YW2Read32Or(memory, sp + 0x14, 0xffffffff);
+
     u32 room_worker = 0;
     u32 room_worker_busy = 0xffffffff;
-    if (target == 0x0033b8bc) {
+    if (target == 0x0033b8bc || target == 0x0033727c || target == 0x00337680 ||
+        target == 0x003376c0 || target == 0x003376f0 || target == 0x00337744 ||
+        target == 0x00364d20) {
         room_worker = YW2Read32Or(memory, r0 + 0x2a70, 0);
         room_worker_busy = YW2Read32Or(memory, room_worker + 0x3eec, 0xffffffff);
     }
@@ -158,9 +197,10 @@ void YW2TraceWorkerBusyPC(ARM_Dynarmic& cpu, Memory::MemorySystem& memory, u32 t
                 "(YW2 WORKER) {} target=0x{:08X} trace_pc=0x{:08X} cpu_pc=0x{:08X} count={} "
                 "r0=0x{:08X} r1=0x{:08X} r2=0x{:08X} r3=0x{:08X} r4=0x{:08X} r5=0x{:08X} "
                 "sp=0x{:08X} lr=0x{:08X} r0_busy=0x{:08X} r1_busy=0x{:08X} r2_busy=0x{:08X} "
-                "room_worker=0x{:08X} room_busy=0x{:08X}",
+                "room_worker=0x{:08X} room_busy=0x{:08X} stack=0x{:08X},0x{:08X},0x{:08X},0x{:08X},0x{:08X},0x{:08X}",
                 YW2WorkerTargetName(target), target, trace_pc, cpu_pc, hit_count, r0, r1, r2, r3,
-                r4, r5, sp, lr, r0_busy, r1_busy, r2_busy, room_worker, room_worker_busy);
+                r4, r5, sp, lr, r0_busy, r1_busy, r2_busy, room_worker, room_worker_busy,
+                sp00, sp04, sp08, sp0c, sp10, sp14);
 }
 
 } // namespace
