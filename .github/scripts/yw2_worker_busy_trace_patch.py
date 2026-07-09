@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 ARM_PATH = Path("src/core/arm/dynarmic/arm_dynarmic.cpp")
 arm_text = ARM_PATH.read_text()
@@ -221,6 +222,13 @@ def patch_once_nwm(old: str, new: str, label: str) -> None:
     nwm_text = nwm_text.replace(old, new, 1)
 
 
+def patch_regex_nwm(pattern: str, insertion: str, label: str) -> None:
+    global nwm_text
+    nwm_text, count = re.subn(pattern, lambda m: m.group(1) + insertion, nwm_text, count=1, flags=re.S)
+    if count != 1:
+        print(f"Skipped optional YW2 worker busy NWM regex patch: {label}")
+
+
 if "(YW2 NWM) GetConnectionStatus after_clear" not in nwm_text:
     patch_once_nwm(
         """    connection_status.changed_nodes = 0;
@@ -261,12 +269,9 @@ if "(YW2 NWM) GetConnectionStatus after_clear" not in nwm_text:
         "GetChannel trace",
     )
 
-    patch_once_nwm(
-        """    std::scoped_lock lock(connection_status_mutex);
-    if (connection_status.status != NetworkStatus::ConnectedAsHost) {
-""",
-        """    std::scoped_lock lock(connection_status_mutex);
-    LOG_WARNING(Service_NWM,
+    patch_regex_nwm(
+        r"(Result NWM_UDS::DestroyNetworkHLE\(\) \{.*?std::scoped_lock lock\(connection_status_mutex\);\n)",
+        """    LOG_WARNING(Service_NWM,
                 "(YW2 NWM) DestroyNetworkHLE before status={} self={} total={} max={} "
                 "bitmask=0x{:X} changed=0x{:X} binds={}",
                 static_cast<u32>(connection_status.status),
@@ -274,34 +279,20 @@ if "(YW2 NWM) GetConnectionStatus after_clear" not in nwm_text:
                 static_cast<u32>(connection_status.total_nodes), static_cast<u32>(connection_status.max_nodes),
                 static_cast<u32>(connection_status.node_bitmask),
                 static_cast<u32>(connection_status.changed_nodes), channel_data.size());
-    if (connection_status.status != NetworkStatus::ConnectedAsHost) {
 """,
         "DestroyNetwork before trace",
     )
 
-    patch_once_nwm(
-        """    for (auto& bind_node : channel_data) {
-        bind_node.second.event->Signal();
-    }
-    channel_data.clear();
-
-    return ResultSuccess;
-""",
-        """    const std::size_t destroyed_bind_count = channel_data.size();
-    for (auto& bind_node : channel_data) {
-        bind_node.second.event->Signal();
-    }
-    channel_data.clear();
-    LOG_WARNING(Service_NWM,
+    patch_regex_nwm(
+        r"(Result NWM_UDS::DestroyNetworkHLE\(\) \{.*?channel_data\.clear\(\);\n)",
+        """    LOG_WARNING(Service_NWM,
                 "(YW2 NWM) DestroyNetworkHLE after status={} self={} total={} max={} "
-                "bitmask=0x{:X} changed=0x{:X} signaled_binds={}",
+                "bitmask=0x{:X} changed=0x{:X} binds={}",
                 static_cast<u32>(connection_status.status),
                 static_cast<u16>(connection_status.network_node_id),
                 static_cast<u32>(connection_status.total_nodes), static_cast<u32>(connection_status.max_nodes),
                 static_cast<u32>(connection_status.node_bitmask),
-                static_cast<u32>(connection_status.changed_nodes), destroyed_bind_count);
-
-    return ResultSuccess;
+                static_cast<u32>(connection_status.changed_nodes), channel_data.size());
 """,
         "DestroyNetwork after trace",
     )
