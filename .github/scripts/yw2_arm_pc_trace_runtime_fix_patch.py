@@ -76,5 +76,9 @@ extra_patch = Path(".github/scripts/yw2_arm_runtime_alias_patch.py")
 if extra_patch.exists():
     exec(extra_patch.read_text(), {"__name__": "__main__"})
 
+worker_patch = Path(".github/scripts/yw2_worker_busy_trace_patch.py")
+if worker_patch.exists():
+    exec(worker_patch.read_text(), {"__name__": "__main__"})
+
 # Do not chain yw2_arm_func_runtime_trace_patch.py here.
 # Its Step-based runtime tracing can break SendSyncRequest/server-session assumptions.
