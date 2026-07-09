@@ -78,9 +78,17 @@ worker_patch = Path(".github/scripts/yw2_worker_busy_trace_patch.py")
 if worker_patch.exists():
     exec(worker_patch.read_text(), {"__name__": "__main__"})
 
+thread_wait_patch = Path(".github/scripts/yw2_thread_wait_trace_patch.py")
+if thread_wait_patch.exists():
+    exec(thread_wait_patch.read_text(), {"__name__": "__main__"})
+
 connection_event_patch = Path(".github/scripts/yw2_nwm_connection_event_trace_patch.py")
 if connection_event_patch.exists():
     exec(connection_event_patch.read_text(), {"__name__": "__main__"})
+
+thread_lifecycle_patch = Path(".github/scripts/yw2_thread_lifecycle_trace_patch.py")
+if thread_lifecycle_patch.exists():
+    exec(thread_lifecycle_patch.read_text(), {"__name__": "__main__"})
 
 extra_patch = Path(".github/scripts/yw2_arm_runtime_alias_patch.py")
 if extra_patch.exists():
