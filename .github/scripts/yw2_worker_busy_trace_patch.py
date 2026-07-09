@@ -297,20 +297,12 @@ if "(YW2 NWM) GetConnectionStatus after_clear" not in nwm_text:
         "DestroyNetwork after trace",
     )
 
-    patch_once_nwm(
-        """    if (channel->second.received_packets.empty()) {
-        output_buffer.resize(buff_size);
-        return int(0);
-    }
-""",
-        """    if (channel->second.received_packets.empty()) {
-        LOG_WARNING(Service_NWM,
+    patch_regex_nwm(
+        r"(Common::Expected<int, ResultStatus> NWM_UDS::PullPacketHLE\(.*?if \(channel->second\.received_packets\.empty\(\)\) \{\n)",
+        """        LOG_WARNING(Service_NWM,
                     "(YW2 NWM) PullPacket empty bind=0x{:X} channel={} status={} binds={} buff_size=0x{:X}",
                     bind_node_id, static_cast<u32>(channel->second.channel),
                     static_cast<u32>(connection_status.status), channel_data.size(), buff_size);
-        output_buffer.resize(buff_size);
-        return int(0);
-    }
 """,
         "PullPacket empty trace",
     )
