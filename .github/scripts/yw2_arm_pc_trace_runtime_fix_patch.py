@@ -106,6 +106,10 @@ guest_failure_patch = Path(".github/scripts/yw2_guest_failure_trace_patch.py")
 if guest_failure_patch.exists():
     exec(guest_failure_patch.read_text(), {"__name__": "__main__"})
 
+comm_thread_direct_patch = Path(".github/scripts/yw2_comm_thread_direct_trace_patch.py")
+if comm_thread_direct_patch.exists():
+    exec(comm_thread_direct_patch.read_text(), {"__name__": "__main__"})
+
 write_watch_patch = Path(".github/scripts/yw2_guest_write_watch_patch.py")
 if write_watch_patch.exists():
     exec(write_watch_patch.read_text(), {"__name__": "__main__"})
@@ -113,6 +117,10 @@ if write_watch_patch.exists():
 comm_worker_patch = Path(".github/scripts/yw2_comm_worker_trace_patch.py")
 if comm_worker_patch.exists():
     exec(comm_worker_patch.read_text(), {"__name__": "__main__"})
+
+comm_addticks_sample_patch = Path(".github/scripts/yw2_comm_addticks_sample_trace_patch.py")
+if comm_addticks_sample_patch.exists():
+    exec(comm_addticks_sample_patch.read_text(), {"__name__": "__main__"})
 
 extra_patch = Path(".github/scripts/yw2_arm_runtime_alias_patch.py")
 if extra_patch.exists():
