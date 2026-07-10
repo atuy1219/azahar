@@ -38,6 +38,7 @@ inline u32 GetCallbackArg() {
 ''',
         '''inline std::atomic<u32> callback_arg{};
 inline std::atomic<u32> flow_processor{};
+inline std::atomic<u32> flow_stack_top{};
 inline std::atomic<u64> flow_generation{};
 inline std::atomic<bool> flow_active{};
 
@@ -49,9 +50,10 @@ inline u32 GetCallbackArg() {
     return callback_arg.load(std::memory_order_acquire);
 }
 
-inline void StartFlow(u32 value, u32 processor) {
+inline void StartFlow(u32 value, u32 processor, u32 stack_top) {
     callback_arg.store(value, std::memory_order_release);
     flow_processor.store(processor, std::memory_order_release);
+    flow_stack_top.store(stack_top, std::memory_order_release);
     flow_generation.fetch_add(1, std::memory_order_acq_rel);
     flow_active.store(true, std::memory_order_release);
 }
@@ -68,6 +70,10 @@ inline u32 FlowProcessor() {
     return flow_processor.load(std::memory_order_acquire);
 }
 
+inline u32 FlowStackTop() {
+    return flow_stack_top.load(std::memory_order_acquire);
+}
+
 inline u64 FlowGeneration() {
     return flow_generation.load(std::memory_order_acquire);
 }
@@ -81,7 +87,7 @@ inline u64 FlowGeneration() {
 if "StartFlow(callback_arg" not in svc_text:
     patch_svc(
         "            Core::YW2CommWriteWatch::SetCallbackArg(callback_arg);\n",
-        "            Core::YW2CommWriteWatch::StartFlow(callback_arg, processor_id);\n",
+        "            Core::YW2CommWriteWatch::StartFlow(callback_arg, processor_id, stack_top);\n",
         "target thread flow start",
     )
 
@@ -135,6 +141,17 @@ void YW2TraceCommFlow(ARM_Dynarmic& cpu, Memory::MemorySystem& memory, u64 ticks
         return;
     }
 
+    const u32 sp = cpu.GetReg(13);
+    const u32 stack_top = YW2CommWriteWatch::FlowStackTop();
+    constexpr u32 stack_window = 0x4000;
+    constexpr u32 stack_slack = 0x100;
+    const u64 stack_low = stack_top >= stack_window ? stack_top - stack_window : 0;
+    const u64 stack_high = static_cast<u64>(stack_top) + stack_slack;
+    if (stack_top == 0 || static_cast<u64>(sp) < stack_low ||
+        static_cast<u64>(sp) > stack_high) {
+        return;
+    }
+
     const u32 core = cpu.GetID() < 4 ? cpu.GetID() : 0;
     static u64 seen_generation[4]{};
     static u64 counts[4]{};
@@ -160,16 +177,17 @@ void YW2TraceCommFlow(ARM_Dynarmic& cpu, Memory::MemorySystem& memory, u64 ticks
     LOG_WARNING(Core_ARM11,
                 "(YW2 COMM FLOW) generation={} count={} core={} ticks={} region={} "
                 "pc=0x{:08X} callback_arg=0x{:08X} ok9={} fail10={} "
-                "r0=0x{:08X} r1=0x{:08X} r2=0x{:08X} r3=0x{:08X} "
-                "r4=0x{:08X} r5=0x{:08X} r6=0x{:08X} r7=0x{:08X} "
-                "r8=0x{:08X} r9=0x{:08X} r10=0x{:08X} r11=0x{:08X} "
-                "r12=0x{:08X} sp=0x{:08X} lr=0x{:08X}",
+                "stack_top=0x{:08X} r0=0x{:08X} r1=0x{:08X} r2=0x{:08X} "
+                "r3=0x{:08X} r4=0x{:08X} r5=0x{:08X} r6=0x{:08X} "
+                "r7=0x{:08X} r8=0x{:08X} r9=0x{:08X} r10=0x{:08X} "
+                "r11=0x{:08X} r12=0x{:08X} sp=0x{:08X} lr=0x{:08X}",
                 generation, count, core, ticks, YW2CommFlowRegion(pc), pc, callback_arg,
                 callback_arg != 0 ? YW2Read8Or(memory, callback_arg + 9) : 0xff,
                 callback_arg != 0 ? YW2Read8Or(memory, callback_arg + 10) : 0xff,
-                cpu.GetReg(0), cpu.GetReg(1), cpu.GetReg(2), cpu.GetReg(3), cpu.GetReg(4),
-                cpu.GetReg(5), cpu.GetReg(6), cpu.GetReg(7), cpu.GetReg(8), cpu.GetReg(9),
-                cpu.GetReg(10), cpu.GetReg(11), cpu.GetReg(12), cpu.GetReg(13), cpu.GetReg(14));
+                stack_top, cpu.GetReg(0), cpu.GetReg(1), cpu.GetReg(2), cpu.GetReg(3),
+                cpu.GetReg(4), cpu.GetReg(5), cpu.GetReg(6), cpu.GetReg(7), cpu.GetReg(8),
+                cpu.GetReg(9), cpu.GetReg(10), cpu.GetReg(11), cpu.GetReg(12), sp,
+                cpu.GetReg(14));
 }
 
 void YW2TraceCommPC(ARM_Dynarmic& cpu, Memory::MemorySystem& memory, u32 trace_pc) {
@@ -192,4 +210,4 @@ void YW2TraceCommPC(ARM_Dynarmic& cpu, Memory::MemorySystem& memory, u32 trace_p
 
 ARM_PATH.write_text(arm_text)
 SVC_PATH.write_text(svc_text)
-print("Applied lightweight YW2 target-thread communication flow trace patch")
+print("Applied stack-filtered YW2 target-thread communication flow trace patch")
