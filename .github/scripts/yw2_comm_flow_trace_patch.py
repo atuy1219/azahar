@@ -103,12 +103,15 @@ if "debug.azahar.yw2_comm_flow_trace" not in arm_text:
         "void YW2TraceCommPC(ARM_Dynarmic& cpu, Memory::MemorySystem& memory, u32 trace_pc) {\n",
         r'''bool YW2CommFlowTraceEnabled() {
 #ifdef ANDROID
-    char value[PROP_VALUE_MAX] = {};
-    if (__system_property_get("debug.azahar.yw2_comm_flow_trace", value) <= 0) {
-        return false;
-    }
-    return std::strcmp(value, "0") != 0 && std::strcmp(value, "false") != 0 &&
-           std::strcmp(value, "off") != 0;
+    static const bool enabled = []() -> bool {
+        char value[PROP_VALUE_MAX] = {};
+        if (__system_property_get("debug.azahar.yw2_comm_flow_trace", value) <= 0) {
+            return false;
+        }
+        return std::strcmp(value, "0") != 0 && std::strcmp(value, "false") != 0 &&
+               std::strcmp(value, "off") != 0;
+    }();
+    return enabled;
 #else
     return false;
 #endif
