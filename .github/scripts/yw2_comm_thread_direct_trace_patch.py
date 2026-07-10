@@ -59,9 +59,9 @@ if "(YW2 COMM THREAD) CreateThread" not in text:
     result_pos = text.find("(YW2 THREAD RESULT)")
     if result_pos < 0:
         raise RuntimeError("YW2 direct communication trace: thread result marker not found")
-    exit_pos = text.find(exit_anchor, result_pos)
+    exit_pos = text.rfind(exit_anchor, 0, result_pos)
     if exit_pos < 0:
-        raise RuntimeError("YW2 direct communication trace: original_arg anchor not found")
+        raise RuntimeError("YW2 direct communication trace: original_arg anchor not found before result log")
     exit_insert_pos = exit_pos + len(exit_anchor)
 
     exit_trace = r'''        const auto yw2_read8 = [&](u32 address) -> u8 {
