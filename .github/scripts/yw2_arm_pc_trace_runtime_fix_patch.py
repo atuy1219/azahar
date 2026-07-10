@@ -126,6 +126,10 @@ dynamic_comm_write_patch = Path(".github/scripts/yw2_dynamic_comm_write_trace_pa
 if dynamic_comm_write_patch.exists():
     exec(dynamic_comm_write_patch.read_text(), {"__name__": "__main__"})
 
+comm_flow_patch = Path(".github/scripts/yw2_comm_flow_trace_patch.py")
+if comm_flow_patch.exists():
+    exec(comm_flow_patch.read_text(), {"__name__": "__main__"})
+
 extra_patch = Path(".github/scripts/yw2_arm_runtime_alias_patch.py")
 if extra_patch.exists():
     exec(extra_patch.read_text(), {"__name__": "__main__"})
