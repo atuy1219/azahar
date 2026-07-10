@@ -102,6 +102,10 @@ svc_context_patch = Path(".github/scripts/yw2_svc_context_memory_trace_patch.py"
 if svc_context_patch.exists():
     exec(svc_context_patch.read_text(), {"__name__": "__main__"})
 
+guest_failure_patch = Path(".github/scripts/yw2_guest_failure_trace_patch.py")
+if guest_failure_patch.exists():
+    exec(guest_failure_patch.read_text(), {"__name__": "__main__"})
+
 extra_patch = Path(".github/scripts/yw2_arm_runtime_alias_patch.py")
 if extra_patch.exists():
     exec(extra_patch.read_text(), {"__name__": "__main__"})
