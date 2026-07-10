@@ -90,6 +90,18 @@ thread_lifecycle_patch = Path(".github/scripts/yw2_thread_lifecycle_trace_patch.
 if thread_lifecycle_patch.exists():
     exec(thread_lifecycle_patch.read_text(), {"__name__": "__main__"})
 
+nwm_state_patch = Path(".github/scripts/yw2_nwm_state_transition_trace_patch.py")
+if nwm_state_patch.exists():
+    exec(nwm_state_patch.read_text(), {"__name__": "__main__"})
+
+kernel_event_patch = Path(".github/scripts/yw2_kernel_event_source_trace_patch.py")
+if kernel_event_patch.exists():
+    exec(kernel_event_patch.read_text(), {"__name__": "__main__"})
+
+svc_context_patch = Path(".github/scripts/yw2_svc_context_memory_trace_patch.py")
+if svc_context_patch.exists():
+    exec(svc_context_patch.read_text(), {"__name__": "__main__"})
+
 extra_patch = Path(".github/scripts/yw2_arm_runtime_alias_patch.py")
 if extra_patch.exists():
     exec(extra_patch.read_text(), {"__name__": "__main__"})
