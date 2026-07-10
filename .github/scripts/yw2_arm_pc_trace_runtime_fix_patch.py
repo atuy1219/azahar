@@ -110,6 +110,10 @@ write_watch_patch = Path(".github/scripts/yw2_guest_write_watch_patch.py")
 if write_watch_patch.exists():
     exec(write_watch_patch.read_text(), {"__name__": "__main__"})
 
+comm_worker_patch = Path(".github/scripts/yw2_comm_worker_trace_patch.py")
+if comm_worker_patch.exists():
+    exec(comm_worker_patch.read_text(), {"__name__": "__main__"})
+
 extra_patch = Path(".github/scripts/yw2_arm_runtime_alias_patch.py")
 if extra_patch.exists():
     exec(extra_patch.read_text(), {"__name__": "__main__"})
