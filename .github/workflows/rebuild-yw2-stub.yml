@@ -1,0 +1,109 @@
+name: Rebuild YW2 stub from master
+
+on:
+  push:
+    branches:
+      - automation/rebuild-yw2-stub-20260711
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Recreate stub branch from latest master
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin master --force
+          git fetch origin backup/yw2-blasters-stub-buildable-52b --force
+          git checkout -B rebuild-yw2-stub origin/master
+
+          set +e
+          git merge --squash origin/backup/yw2-blasters-stub-buildable-52b
+          merge_status=$?
+          set -e
+
+          conflicts="$(git diff --name-only --diff-filter=U)"
+          if [ -n "$conflicts" ]; then
+            echo "Conflicts to resolve:"
+            printf '%s\n' "$conflicts"
+
+            while IFS= read -r file; do
+              [ -n "$file" ] || continue
+              case "$file" in
+                src/android/app/build.gradle.kts)
+                  # Start from the buildable stub version, then retain the newer
+                  # master-side ktlint and GIT_VERSION configuration.
+                  git checkout --theirs -- "$file"
+                  python3 - <<'PY'
+from pathlib import Path
+
+path = Path("src/android/app/build.gradle.kts")
+text = path.read_text()
+
+plugin = '    id("org.jlleitschuh.gradle.ktlint")\n'
+anchor = '    id("androidx.navigation.safeargs.kotlin")\n'
+if plugin not in text:
+    if anchor not in text:
+        raise SystemExit("build.gradle plugin anchor not found")
+    text = text.replace(anchor, anchor + plugin, 1)
+
+git_version = '        buildConfigField("String", "GIT_VERSION", "\\\"${getGitVersion()}\\\"")\n'
+git_hash = '        buildConfigField("String", "GIT_HASH", "\\\"${getGitHash()}\\\"")\n'
+if git_version not in text:
+    if git_hash not in text:
+        raise SystemExit("build.gradle GIT_HASH anchor not found")
+    text = text.replace(git_hash, git_version + git_hash, 1)
+
+ktlint_block = '''ktlint {
+    version = "1.8.0"
+}
+
+'''
+function_anchor = 'fun getGitVersion(): String {\n'
+if 'ktlint {\n' not in text:
+    if function_anchor not in text:
+        raise SystemExit("build.gradle getGitVersion anchor not found")
+    text = text.replace(function_anchor, ktlint_block + function_anchor, 1)
+
+path.write_text(text)
+PY
+                  git add "$file"
+                  ;;
+                src/core/hle/service/http/http_c.cpp|src/core/hle/service/http/http_c.h)
+                  # These are intentional stub-side HTTP changes.
+                  git checkout --theirs -- "$file"
+                  git add "$file"
+                  ;;
+                *)
+                  echo "Unexpected merge conflict: $file" >&2
+                  exit 1
+                  ;;
+              esac
+            done <<< "$conflicts"
+          fi
+
+          if git diff --name-only --diff-filter=U | grep -q .; then
+            echo "Unresolved conflicts remain" >&2
+            git diff --name-only --diff-filter=U >&2
+            exit 1
+          fi
+
+          if [ "$merge_status" -ne 0 ] && [ -z "$conflicts" ]; then
+            echo "Squash merge failed without reported conflicts" >&2
+            exit "$merge_status"
+          fi
+
+          git status --short
+          git commit -m "Rebase YW2 blasters stub onto latest master"
+          git push --force origin HEAD:refs/heads/test/yw2-blasters-stub
