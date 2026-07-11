@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - automation/rebuild-yw2-stub-20260711
+      - automation/rebuild-yw2-stub-trigger
 
 permissions:
   contents: write
