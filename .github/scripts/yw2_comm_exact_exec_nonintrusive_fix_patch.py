@@ -16,9 +16,10 @@ def patch_once(old: str, new: str, label: str) -> None:
     text = text.replace(old, new, 1)
 
 
-# Do not instrument every instruction in FUN_00244EC8. In particular, 0x00244F18 is a
-# hot polling/back-edge point; injecting CallSupervisor there changes scheduling and can
-# prevent the helper thread from making progress. Keep only sparse execution checkpoints.
+# Do not instrument every instruction in FUN_00244EC8. Supervisor callbacks at hot
+# polling/control-flow points such as 0x00244F18 and 0x00244F34 can repeatedly resume at
+# the same guest PC and prevent the helper thread from making progress. Keep only the
+# checkpoints that were observed to complete without stalling.
 patch_once(
     '''    if (normalized >= 0x00244EC8 && normalized <= 0x00244F4C) {
         return YW2_COMM_EXEC_MAIN | (normalized - 0x00244EC8);
@@ -40,16 +41,6 @@ patch_once(
         return YW2_COMM_EXEC_MAIN | 0x005C;
     case 0x00244F2C:
         return YW2_COMM_EXEC_MAIN | 0x0064;
-    case 0x00244F34:
-        return YW2_COMM_EXEC_MAIN | 0x006C;
-    case 0x00244F3C:
-        return YW2_COMM_EXEC_MAIN | 0x0074;
-    case 0x00244F44:
-        return YW2_COMM_EXEC_MAIN | 0x007C;
-    case 0x00244F48:
-        return YW2_COMM_EXEC_MAIN | 0x0080;
-    case 0x00244F4C:
-        return YW2_COMM_EXEC_MAIN | 0x0084;
     case 0x00294EC8:
         return YW2_COMM_EXEC_ALIAS | 0x0000;
     case 0x00294F10:
@@ -62,21 +53,27 @@ patch_once(
         return YW2_COMM_EXEC_ALIAS | 0x005C;
     case 0x00294F2C:
         return YW2_COMM_EXEC_ALIAS | 0x0064;
-    case 0x00294F34:
-        return YW2_COMM_EXEC_ALIAS | 0x006C;
-    case 0x00294F3C:
-        return YW2_COMM_EXEC_ALIAS | 0x0074;
-    case 0x00294F44:
-        return YW2_COMM_EXEC_ALIAS | 0x007C;
-    case 0x00294F48:
-        return YW2_COMM_EXEC_ALIAS | 0x0080;
-    case 0x00294F4C:
-        return YW2_COMM_EXEC_ALIAS | 0x0084;
     default:
         break;
     }
 ''',
-    "sparse FUN_00244EC8 checkpoints",
+    "safe FUN_00244EC8 checkpoints",
+)
+
+
+# 0x0012E420 is the call-site control-flow instruction before FUN_002BEC3C. Injecting a
+# supervisor callback there can perturb the call itself. Record only the callee entry and
+# the return site at 0x0012E424.
+patch_once(
+    '''    case 0x0012E420:
+        return YW2_COMM_EXEC_SPECIAL | 0x04;
+    case 0x002BEC3C:
+        return YW2_COMM_EXEC_SPECIAL | 0x05;
+''',
+    '''    case 0x002BEC3C:
+        return YW2_COMM_EXEC_SPECIAL | 0x05;
+''',
+    "remove pre-2BEC3C control-flow checkpoint",
 )
 
 
@@ -86,7 +83,7 @@ patch_once(
     '''void YW2LogCommExec(ARM_Dynarmic& cpu, Memory::MemorySystem& memory, u32 swi) {
 ''',
     '''std::string YW2CommExecPointerDump(Memory::MemorySystem& memory, u32 address,
-                                      u32 length) {
+                                       u32 length) {
     if (address < 0x08000000 || address >= 0x20000000) {
         return "not_guest_pointer";
     }
@@ -115,4 +112,4 @@ patch_once(
 )
 
 path.write_text(text)
-print("Applied non-intrusive YW2 exact execution trace checkpoints and pointer guards")
+print("Applied reduced YW2 exact execution trace checkpoints and pointer guards")
