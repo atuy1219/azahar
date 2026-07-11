@@ -1,0 +1,52 @@
+name: One-shot clean YW2 branches
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - 'test/yw2-blasters-stub'
+
+permissions:
+  contents: write
+
+jobs:
+  clean:
+    if: github.repository == 'atuy1219/azahar'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout retained stub branch
+        uses: actions/checkout@v6
+        with:
+          ref: test/yw2-blasters-stub
+          fetch-depth: 0
+
+      - name: Delete obsolete branches
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          branches=(
+            'backup/yw2-blasters-stub-buildable-52b'
+            'backup/yw2-blasters-stub-pre-master-refresh-20260711'
+            'automation/rebuild-yw2-stub-20260711'
+            'automation/rebuild-yw2-stub-trigger'
+            'automation/embed-yw2-payload-and-clean'
+            'test/yw2-blasters-stub-master-refresh'
+          )
+
+          for branch in "${branches[@]}"; do
+            if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+              git push origin --delete "$branch"
+            fi
+          done
+
+      - name: Remove this one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -f .github/workflows/one-shot-clean-yw2-branches.yml
+          git add -A
+          git commit -m 'Remove completed branch cleanup workflow'
+          git push origin HEAD:refs/heads/test/yw2-blasters-stub
