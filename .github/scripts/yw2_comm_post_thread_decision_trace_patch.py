@@ -65,12 +65,26 @@ arm_text = arm_text.replace(old_flag_reads, new_flag_reads)
 
 # Record only register/write-state changes at the two post-thread decision PCs. This helper
 # performs no guest-memory reads, so it cannot recreate the freed-callback access problem.
+# Use a uniquely named property helper here instead of forward-declaring
+# YW2CommExecTraceEnabled(). The exact-execution patch defines that function later in a
+# different anonymous-namespace scope, and a forward declaration here makes calls ambiguous.
 patch_arm_once(
     "bool YW2CommDynamicFlagOverlaps(u32 address, u32 size) {\n",
-    r'''bool YW2CommExecTraceEnabled();
+    r'''bool YW2PostThreadDecisionTraceEnabled() {
+#ifdef ANDROID
+    char value[PROP_VALUE_MAX] = {};
+    if (__system_property_get("debug.azahar.yw2_comm_exec_trace", value) <= 0) {
+        return false;
+    }
+    return std::strcmp(value, "0") != 0 && std::strcmp(value, "false") != 0 &&
+           std::strcmp(value, "off") != 0;
+#else
+    return false;
+#endif
+}
 
 void YW2TracePostThreadDecisionWrite(ARM_Dynarmic& cpu, u32 address, u64 value, u32 size) {
-    if (!YW2CommExecTraceEnabled() || YW2CommWriteWatch::FlowGeneration() == 0 ||
+    if (!YW2PostThreadDecisionTraceEnabled() || YW2CommWriteWatch::FlowGeneration() == 0 ||
         YW2CommWriteWatch::FlowActive()) {
         return;
     }
