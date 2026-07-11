@@ -1690,7 +1690,7 @@ NWM_UDS::NWM_UDS(Core::System& system) : ServiceFramework("nwm::UDS"), system(sy
         {0x001E, &NWM_UDS::ConnectToNetwork, "ConnectToNetwork"},
         {0x001F, &NWM_UDS::DecryptBeaconData, "DecryptBeaconData"},
         {0x0020, nullptr, "Flush"},
-        {0x0021, nullptr, "SetProbeResponseParam"},
+        {0x0021, &NWM_UDS::SetProbeResponseParam, "SetProbeResponseParam"},
         {0x0022, nullptr, "ScanOnConnection"},
         // clang-format on
     };
@@ -1712,6 +1712,22 @@ NWM_UDS::NWM_UDS(Core::System& system) : ServiceFramework("nwm::UDS"), system(sy
     } else {
         LOG_ERROR(Service_NWM, "Network isn't initalized");
     }
+}
+
+void NWM_UDS::SetProbeResponseParam(Kernel::HLERequestContext& ctx) {
+    IPC::RequestParser rp(ctx);
+
+    u32 param1 = rp.Pop<u32>();
+    u32 param2 = rp.Pop<u32>();
+
+    LOG_WARNING(Service_NWM, "(STUBBED) SetProbeResponseParam called, param1=0x{:08X}, param2=0x{:08X}", param1, param2);
+
+    if (connection_status_event) {
+        connection_status_event->Signal();
+    }
+
+    IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+    rb.Push(ResultSuccess);
 }
 
 NWM_UDS::~NWM_UDS() {
