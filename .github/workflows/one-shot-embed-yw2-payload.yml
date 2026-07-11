@@ -1,0 +1,65 @@
+name: One-shot embed YW2 payload
+
+on:
+  push:
+    branches:
+      - 'test/yw2-blasters-stub'
+
+permissions:
+  contents: write
+
+jobs:
+  embed-payload:
+    if: github.repository == 'atuy1219/azahar'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout stub branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Embed buildable YW2 payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin backup/yw2-blasters-stub-buildable-52b --force
+
+          git checkout origin/backup/yw2-blasters-stub-buildable-52b -- \
+            .github/scripts \
+            src/core/hle/service/http/http_c.cpp \
+            src/core/hle/service/http/http_c.h \
+            src/core/hle/service/nwm/nwm_uds.cpp \
+            src/core/hle/service/nwm/nwm_uds.h
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('.github/workflows/android-build.yml')
+          text = path.read_text()
+          pattern = re.compile(
+              r"      - name: Hydrate buildable YW2 stub payload\n"
+              r"        shell: bash\n"
+              r"        run: \|\n"
+              r"(?:          .*\n)*?"
+              r"(?=      - name: Set up JDK 17\n)",
+              re.MULTILINE,
+          )
+          replacement = (
+              "      - name: Prepare latest-master YW2 build controls\n"
+              "        run: python3 .github/hydrate_yw2_stub_on_master.py\n\n"
+          )
+          text, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit('android-build hydration step was not found exactly once')
+          if 'backup/yw2-blasters-stub-buildable-52b' in text:
+              raise SystemExit('backup branch dependency remains')
+          path.write_text(text)
+          PY
+
+          rm -f .github/workflows/one-shot-embed-yw2-payload.yml
+          git add -A
+          git commit -m 'Embed YW2 stub payload and remove backup dependency'
+          git push origin HEAD:refs/heads/test/yw2-blasters-stub
