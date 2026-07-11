@@ -134,6 +134,12 @@ comm_exact_exec_patch = Path(".github/scripts/yw2_comm_exact_exec_trace_patch.py
 if comm_exact_exec_patch.exists():
     exec(comm_exact_exec_patch.read_text(), {"__name__": "__main__"})
 
+comm_exact_exec_build_fix_patch = Path(
+    ".github/scripts/yw2_comm_exact_exec_build_fix_patch.py"
+)
+if comm_exact_exec_build_fix_patch.exists():
+    exec(comm_exact_exec_build_fix_patch.read_text(), {"__name__": "__main__"})
+
 extra_patch = Path(".github/scripts/yw2_arm_runtime_alias_patch.py")
 if extra_patch.exists():
     exec(extra_patch.read_text(), {"__name__": "__main__"})
