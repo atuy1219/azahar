@@ -6,6 +6,12 @@ on:
     paths:
       - tools/yw2-3gx-tracer/**
       - .github/workflows/build-yw2-3gx.yml
+  pull_request:
+    branches: [ test/yw2-3gx-tracer ]
+    paths:
+      - tools/yw2-3gx-tracer/**
+      - .github/workflows/build-yw2-3gx.yml
+      - tools/yw2-3gx-tracer/BUILD_TRIGGER
   workflow_dispatch:
 
 jobs:
