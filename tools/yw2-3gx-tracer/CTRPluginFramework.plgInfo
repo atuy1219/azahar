@@ -2,18 +2,18 @@ Author: atuy1219 / OpenAI
 
 Version:
     Major: 0
-    Minor: 4
-    Revision: 1
+    Minor: 5
+    Revision: 0
 
 Targets:
 
 Title: YW2 Runtime Trace
 
-Summary: Runtime tracer for Yo-kai Watch 2 communication analysis
+Summary: Room, participant, and character-selection runtime tracer
 
 Description: |
-  Captures selected game-side communication and timeout control-flow points.
-  Uses an 8192-record ring buffer and exports complete 38-column CSV rows.
+  Samples the high-frequency wait hook, captures session/participant update paths,
+  supports manual phase markers, and exports extended CSV rows.
 
 Compatibility: Any
 
