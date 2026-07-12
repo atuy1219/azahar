@@ -2,30 +2,17 @@
 
 This project is built from PabloMK7's `CTRPluginFramework-BlankTemplate` and overlays a Yo-kai Watch 2 runtime tracer.
 
-## Version 0.5.0
+## Version 0.5.1
 
-- keeps the 8192-record ring buffer used by v0.4.1
+- keeps the 8192-record ring buffer
 - samples `0x003376F0` at most once every 100 ms unless its key register signature changes
-- reports total, saved, and skipped `0x003376F0` hits when saving
-- adds manual phase markers for room creation, enemy selection, character selection, and preview visibility
+- retains the room-created and enemy-selected manual markers
+- removes the separate character-selected and preview-visible manual markers
+- automatically records `MARK_character_preview_auto` when the session protocol `r9` pointer leaves its post-room baseline after the enemy marker and then returns to that baseline
 - automatically adds a gameplay-start marker when **Stop and save at gameplay start** is selected
-- adds grounded session and participant update hooks identified from the Ghidra analysis
-- extends CSV rows with job/session fields and packet header data
+- reports the automatic marker count and detected baseline `r9` pointer in the save dialog
 
-## Added session targets
-
-- `0x0032C9B0` CreateSessionJob
-- `0x0034661C` session protocol queue pump
-- `0x00343D94` packet dispatcher
-- `0x00349B3C` ProcessJoinRequestJob
-- `0x0034EF84` session update dispatcher
-- `0x0034D4F8` normal session update parser
-- `0x0034E9D4` alternate session update parser
-- `0x0034D860` staged participant update apply
-- `0x0034C328` session participant update loop
-- `0x0034D058` participant count mirror
-
-The parser-related rows include `job_4c`, `job_88`, `job_a0`, `job_a4`, `packet_ptr`, `packet_len`, `packet_header`, and `packet_seq`.
+Character selection and preview display are treated as one event. The automatic marker is inserted from the game-side protocol hook, so opening the CTRPF menu no longer pauses the game at that phase.
 
 ## Usage
 
@@ -34,9 +21,8 @@ The parser-related rows include `job_4c`, `job_88`, `job_a0`, `job_a4`, `packet_
 3. Select **Start trace** immediately before creating the room.
 4. After room creation, select **Mark: room created**.
 5. After choosing the enemy, select **Mark: enemy selected**.
-6. After choosing the character, select **Mark: character selected**.
-7. When the character preview is visible, select **Mark: preview visible**.
-8. Proceed to gameplay and immediately select **Stop and save at gameplay start**.
-9. Copy `yw2_trace_XXXXXXXX.csv` from the plugin's 3GX directory.
+6. Choose the character normally. Do not open the plugin menu; the combined character-selection/preview event is detected automatically.
+7. Proceed to gameplay and immediately select **Stop and save at gameplay start**.
+8. Copy `yw2_trace_XXXXXXXX.csv` from the plugin's 3GX directory.
 
-Do not start the trace before the save has finished loading. A model-loader hook is not included yet because its exact address has not been verified; the manual preview marker provides a safe timing boundary without guessing an address.
+The observed normal-flow signature was a non-zero `r9` transition from the post-room baseline to a selection-context pointer and back. This detector is empirical and the resulting CSV should still be checked for `MARK_character_preview_auto`.

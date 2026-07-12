@@ -3,17 +3,17 @@ Author: atuy1219 / OpenAI
 Version:
     Major: 0
     Minor: 5
-    Revision: 0
+    Revision: 1
 
 Targets:
 
 Title: YW2 Runtime Trace
 
-Summary: Room, participant, and character-selection runtime tracer
+Summary: Automatic character-selection and preview transition tracer
 
 Description: |
   Samples the high-frequency wait hook, captures session/participant update paths,
-  supports manual phase markers, and exports extended CSV rows.
+  and marks the combined character-selection/preview transition automatically.
 
 Compatibility: Any
 

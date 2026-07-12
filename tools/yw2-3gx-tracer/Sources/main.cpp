@@ -17,9 +17,13 @@ constexpr u64 kWaitF0SampleIntervalMs = 100;
 constexpr u32 kMarkerTraceStart = 0xFFF00001u;
 constexpr u32 kMarkerRoomCreated = 0xFFF00002u;
 constexpr u32 kMarkerEnemySelected = 0xFFF00003u;
-constexpr u32 kMarkerCharacterSelected = 0xFFF00004u;
-constexpr u32 kMarkerPreviewVisible = 0xFFF00005u;
+constexpr u32 kMarkerCharacterPreviewAuto = 0xFFF00004u;
 constexpr u32 kMarkerGameplayStarted = 0xFFF00006u;
+
+constexpr u32 kCharacterPreviewIdle = 0;
+constexpr u32 kCharacterPreviewWaitForDeparture = 1;
+constexpr u32 kCharacterPreviewWaitForReturn = 2;
+constexpr u32 kCharacterPreviewComplete = 3;
 
 struct TraceRecord {
     u32 sequence;
@@ -105,6 +109,11 @@ static u32 g_last_wait_f0_signature = 0;
 static volatile u32 g_wait_f0_seen = 0;
 static volatile u32 g_wait_f0_saved = 0;
 
+static volatile u32 g_protocol_baseline_r9 = 0;
+static volatile u32 g_protocol_last_nonzero_r9 = 0;
+static volatile u32 g_character_preview_state = kCharacterPreviewIdle;
+static volatile u32 g_character_preview_auto_markers = 0;
+
 static const char *TargetName(u32 pc) {
     switch (pc) {
     case kMarkerTraceStart:
@@ -113,10 +122,8 @@ static const char *TargetName(u32 pc) {
         return "MARK_room_created";
     case kMarkerEnemySelected:
         return "MARK_enemy_selected";
-    case kMarkerCharacterSelected:
-        return "MARK_character_selected";
-    case kMarkerPreviewVisible:
-        return "MARK_preview_visible";
+    case kMarkerCharacterPreviewAuto:
+        return "MARK_character_preview_auto";
     case kMarkerGameplayStarted:
         return "MARK_gameplay_started";
     default:
@@ -274,6 +281,38 @@ static void PushMarker(u32 marker_pc) {
     FillDerivedFields(record);
 }
 
+static void ObserveSessionProtocolPump(u32 pc, u32 *frame) {
+    if (pc != 0x0034661Cu)
+        return;
+
+    const u32 pointer = frame[9];
+    if (!LooksLikeGuestPointer(pointer))
+        return;
+
+    if (g_protocol_baseline_r9 == 0) {
+        g_protocol_baseline_r9 = pointer;
+        g_protocol_last_nonzero_r9 = pointer;
+        return;
+    }
+
+    const u32 previous = g_protocol_last_nonzero_r9;
+    g_protocol_last_nonzero_r9 = pointer;
+
+    if (g_character_preview_state == kCharacterPreviewWaitForDeparture) {
+        if (previous == g_protocol_baseline_r9 && pointer != g_protocol_baseline_r9)
+            g_character_preview_state = kCharacterPreviewWaitForReturn;
+        return;
+    }
+
+    if (g_character_preview_state == kCharacterPreviewWaitForReturn &&
+        pointer == g_protocol_baseline_r9 && previous != 0 &&
+        previous != g_protocol_baseline_r9) {
+        g_character_preview_state = kCharacterPreviewComplete;
+        __sync_fetch_and_add(&g_character_preview_auto_markers, 1u);
+        PushMarker(kMarkerCharacterPreviewAuto);
+    }
+}
+
 static u32 WaitF0Signature(u32 *frame) {
     return frame[0] ^ (frame[2] * 0x45D9F3Bu) ^ (frame[4] * 0x119DE1F3u) ^
            (frame[5] * 0x3449u) ^ (frame[9] << 16) ^ frame[10];
@@ -321,6 +360,7 @@ extern "C" void YW2TraceHookHandler(u32 *frame) {
         record.stack[index] = Read32Safe(record.sp + index * sizeof(u32));
 
     FillDerivedFields(record);
+    ObserveSessionProtocolPump(pc, frame);
 }
 
 extern "C" void __attribute__((naked)) YW2TraceHookStub(void) {
@@ -345,6 +385,10 @@ static void ClearTrace(void) {
     g_wait_f0_saved = 0;
     g_last_wait_f0_tick = 0;
     g_last_wait_f0_signature = 0;
+    g_protocol_baseline_r9 = 0;
+    g_protocol_last_nonzero_r9 = 0;
+    g_character_preview_state = kCharacterPreviewIdle;
+    g_character_preview_auto_markers = 0;
     g_last_regs.fill(0);
     g_last_sp = 0;
     g_last_callback_lr = 0;
@@ -470,19 +514,18 @@ static void MarkPhase(u32 marker, const char *text) {
 }
 
 static void MarkRoomCreated(MenuEntry *) {
+    g_protocol_baseline_r9 = 0;
+    g_protocol_last_nonzero_r9 = 0;
+    g_character_preview_state = kCharacterPreviewIdle;
     MarkPhase(kMarkerRoomCreated, "Marked: room created");
 }
 
 static void MarkEnemySelected(MenuEntry *) {
     MarkPhase(kMarkerEnemySelected, "Marked: enemy selected");
-}
-
-static void MarkCharacterSelected(MenuEntry *) {
-    MarkPhase(kMarkerCharacterSelected, "Marked: character selected");
-}
-
-static void MarkPreviewVisible(MenuEntry *) {
-    MarkPhase(kMarkerPreviewVisible, "Marked: preview visible");
+    if (g_session_active) {
+        g_character_preview_state = kCharacterPreviewWaitForDeparture;
+        g_protocol_last_nonzero_r9 = g_protocol_baseline_r9;
+    }
 }
 
 static void StopAndSaveTrace(MenuEntry *) {
@@ -507,8 +550,10 @@ static void StopAndSaveTrace(MenuEntry *) {
         MessageBox(
             "YW2 trace saved",
             Utils::Format(
-                "3gxDir:/%s\nstored=%u total=%u dropped=%u\nF0 seen=%u saved=%u skipped=%u",
-                path.c_str(), stored, total, dropped, f0_seen, f0_saved, f0_skipped))();
+                "3gxDir:/%s\nstored=%u total=%u dropped=%u\nF0 seen=%u saved=%u skipped=%u\nauto character+preview=%u baseline_r9=%08X",
+                path.c_str(), stored, total, dropped, f0_seen, f0_saved, f0_skipped,
+                static_cast<u32>(g_character_preview_auto_markers),
+                static_cast<u32>(g_protocol_baseline_r9)))();
     } else {
         MessageBox("YW2 trace", "Failed to write the trace file.")();
     }
@@ -542,9 +587,9 @@ void InitMenu(PluginMenu &menu) {
         "Start trace", nullptr, StartTrace,
         "Start after the save and Busters hub are loaded, immediately before room creation.");
     menu += new MenuEntry("Mark: room created", nullptr, MarkRoomCreated);
-    menu += new MenuEntry("Mark: enemy selected", nullptr, MarkEnemySelected);
-    menu += new MenuEntry("Mark: character selected", nullptr, MarkCharacterSelected);
-    menu += new MenuEntry("Mark: preview visible", nullptr, MarkPreviewVisible);
+    menu += new MenuEntry(
+        "Mark: enemy selected", nullptr, MarkEnemySelected,
+        "Arms automatic character-selection and preview detection from protocol r9 transitions.");
     menu += new MenuEntry(
         "Stop and save at gameplay start", nullptr, StopAndSaveTrace,
         "Adds a gameplay-start marker, disables hooks, and writes one CSV.");
@@ -555,9 +600,9 @@ void InitMenu(PluginMenu &menu) {
 
 int main(void) {
     PluginMenu *menu = new PluginMenu(
-        "YW2 Runtime Trace", 0, 5, 0,
+        "YW2 Runtime Trace", 0, 5, 1,
         "Runtime tracer for room/member and character-selection timing analysis.\n"
-        "0x003376F0 is sampled every 100 ms. Use the phase markers during selection.");
+        "Mark room creation and enemy selection; character+preview is detected automatically.");
     menu->SynchronizeWithFrame(true);
     InitMenu(*menu);
     menu->Run();
