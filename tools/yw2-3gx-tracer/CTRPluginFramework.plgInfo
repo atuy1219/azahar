@@ -2,18 +2,18 @@ Author: atuy1219 / OpenAI
 
 Version:
     Major: 0
-    Minor: 3
+    Minor: 4
     Revision: 0
 
 Targets:
 
-Title: YW2 Safe Probe
+Title: YW2 Runtime Trace
 
-Summary: Non-invasive address probe for Yo-kai Watch 2 analysis
+Summary: Runtime tracer for Yo-kai Watch 2 communication analysis
 
 Description: |
-  Reads the target Title ID, text range, and instruction words around selected addresses.
-  This build installs no hooks and does not write to game code or game memory.
+  Captures selected game-side communication and timeout control-flow points.
+  Uses a 16384-record ring buffer and exports complete 38-column CSV rows.
 
 Compatibility: Any
 
