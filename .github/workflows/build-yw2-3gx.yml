@@ -33,7 +33,7 @@ jobs:
         working-directory: /tmp/YW2RuntimeTrace
         run: |
           set +e
-          make -j2 > /tmp/yw2-3gx-build.log 2>&1
+          make > /tmp/yw2-3gx-build.log 2>&1
           echo $? > /tmp/yw2-3gx-build.exit
           cat /tmp/yw2-3gx-build.log
           exit 0
