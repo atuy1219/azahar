@@ -1,0 +1,40 @@
+name: Build YW2 3GX tracer
+
+on:
+  push:
+    branches: [ test/yw2-3gx-tracer ]
+    paths:
+      - tools/yw2-3gx-tracer/**
+      - .github/workflows/build-yw2-3gx.yml
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: pablomk7/libctrpf:0.8.0
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy blank template
+        run: |
+          git clone --depth 1 https://github.com/PabloMK7/CTRPluginFramework-BlankTemplate.git /tmp/YW2RuntimeTrace
+          cp tools/yw2-3gx-tracer/Sources/main.cpp /tmp/YW2RuntimeTrace/Sources/main.cpp
+          cp tools/yw2-3gx-tracer/CTRPluginFramework.plgInfo /tmp/YW2RuntimeTrace/CTRPluginFramework.plgInfo
+
+      - name: Build plugin
+        working-directory: /tmp/YW2RuntimeTrace
+        run: make -j2
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p artifacts
+          cp /tmp/YW2RuntimeTrace/YW2RuntimeTrace.3gx artifacts/YW2RuntimeTrace.3gx
+          cp /tmp/YW2RuntimeTrace/YW2RuntimeTrace.elf artifacts/YW2RuntimeTrace.elf
+          cp tools/yw2-3gx-tracer/README.md artifacts/README.md
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: YW2RuntimeTrace
+          path: artifacts/
