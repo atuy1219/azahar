@@ -10,7 +10,7 @@ namespace CTRPluginFramework {
 namespace {
 
 constexpr u32 kInvalid = 0xFFFFFFFFu;
-constexpr u32 kCapacity = 16384;
+constexpr u32 kCapacity = 8192;
 constexpr u32 kStackWords = 8;
 
 struct TraceRecord {
@@ -139,8 +139,6 @@ extern "C" void YW2TraceHookHandler(u32 *frame) {
 
     record.sp = reinterpret_cast<u32>(frame + 14);
     record.callback_lr = frame[13];
-    // CTRPF default hooks call the callback through BLX. The original game LR is
-    // restored from a literal four ARM words after the callback continuation.
     record.game_lr = Read32Safe(record.callback_lr + 0x10u);
 
     for (u32 index = 0; index < kStackWords; ++index)
@@ -278,7 +276,7 @@ static void StartTrace(MenuEntry *) {
     }
 
     if (InstallHooks()) {
-        OSD::Notify(Color::Lime << "YW2 trace started (capacity 16384)");
+        OSD::Notify(Color::Lime << "YW2 trace started (capacity 8192)");
     } else {
         MessageBox("YW2 trace", "No hook could be installed. Check Hook status.")();
     }
@@ -342,7 +340,7 @@ void InitMenu(PluginMenu &menu) {
 
 int main(void) {
     PluginMenu *menu = new PluginMenu(
-        "YW2 Runtime Trace", 0, 4, 0,
+        "YW2 Runtime Trace", 0, 4, 1,
         "Runtime tracer for Yo-kai Watch 2 communication state analysis.\n"
         "Load the save first. Start immediately before room creation and stop when gameplay begins.");
     menu->SynchronizeWithFrame(true);
