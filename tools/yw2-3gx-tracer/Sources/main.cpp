@@ -22,6 +22,7 @@ struct TraceRecord {
     u32 regs[13];
     u32 sp;
     u32 callback_lr;
+    u32 game_lr;
     u32 stack[kStackWords];
     u32 r0_plus_2a70;
     u32 r4_plus_2a70;
@@ -136,6 +137,9 @@ extern "C" void YW2TraceHookHandler(u32 *frame) {
 
     record.sp = reinterpret_cast<u32>(frame + 14);
     record.callback_lr = frame[13];
+    // CTRPF default hooks call the callback through BLX. The original game LR is
+    // restored from a literal four ARM words after the callback continuation.
+    record.game_lr = Read32Safe(record.callback_lr + 0x10u);
 
     for (u32 index = 0; index < kStackWords; ++index)
         record.stack[index] = Read32Safe(record.sp + index * sizeof(u32));
@@ -220,7 +224,7 @@ static bool SaveTrace(std::string &saved_path) {
 
     file.WriteLine(
         "seq,tick_hi,tick_lo,thread,pc,name,r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,"
-        "sp,callback_lr,stack0,stack1,stack2,stack3,stack4,stack5,stack6,stack7,"
+        "sp,callback_lr,game_lr,stack0,stack1,stack2,stack3,stack4,stack5,stack6,stack7,"
         "r0_plus_2a70,r4_plus_2a70,r0_active8,r4_active8,r0_inline_active8,"
         "r4_inline_active8,r0_pointer_active8,r4_pointer_active8");
 
@@ -232,13 +236,13 @@ static bool SaveTrace(std::string &saved_path) {
         file.WriteLine(Utils::Format(
             "%u,%08X,%08X,%u,%08X,%s,%08X,%08X,%08X,%08X,%08X,%08X,%08X,%08X,"
             "%08X,%08X,%08X,%08X,%08X,%08X,%08X,%08X,%08X,%08X,%08X,%08X,%08X,"
-            "%08X,%08X,%08X,%08X,%08X,%08X,%08X,%08X,%08X,%08X",
+            "%08X,%08X,%08X,%08X,%08X,%08X,%08X,%08X,%08X,%08X,%08X",
             record.sequence, record.tick_hi, record.tick_lo, record.thread_id, record.pc,
             TargetName(record.pc), record.regs[0], record.regs[1], record.regs[2],
             record.regs[3], record.regs[4], record.regs[5], record.regs[6],
             record.regs[7], record.regs[8], record.regs[9], record.regs[10],
             record.regs[11], record.regs[12], record.sp, record.callback_lr,
-            record.stack[0], record.stack[1], record.stack[2], record.stack[3],
+            record.game_lr, record.stack[0], record.stack[1], record.stack[2], record.stack[3],
             record.stack[4], record.stack[5], record.stack[6], record.stack[7],
             record.r0_plus_2a70, record.r4_plus_2a70, record.r0_active8,
             record.r4_active8, record.r0_inline_active8, record.r4_inline_active8,
