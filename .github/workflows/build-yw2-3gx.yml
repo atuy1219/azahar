@@ -31,16 +31,28 @@ jobs:
 
       - name: Build plugin
         working-directory: /tmp/YW2RuntimeTrace
-        run: make -j2
+        run: |
+          set +e
+          make -j2 > /tmp/yw2-3gx-build.log 2>&1
+          echo $? > /tmp/yw2-3gx-build.exit
+          cat /tmp/yw2-3gx-build.log
+          exit 0
 
-      - name: Collect artifacts
+      - name: Collect build outputs
         run: |
           mkdir -p artifacts
-          cp /tmp/YW2RuntimeTrace/YW2RuntimeTrace.3gx artifacts/YW2RuntimeTrace.3gx
-          cp /tmp/YW2RuntimeTrace/YW2RuntimeTrace.elf artifacts/YW2RuntimeTrace.elf
+          cp /tmp/yw2-3gx-build.log artifacts/build.log
           cp tools/yw2-3gx-tracer/README.md artifacts/README.md
+          if [ "$(cat /tmp/yw2-3gx-build.exit)" = "0" ]; then
+            cp /tmp/YW2RuntimeTrace/YW2RuntimeTrace.3gx artifacts/YW2RuntimeTrace.3gx
+            cp /tmp/YW2RuntimeTrace/YW2RuntimeTrace.elf artifacts/YW2RuntimeTrace.elf
+          fi
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: YW2RuntimeTrace
           path: artifacts/
+
+      - name: Check build result
+        run: test "$(cat /tmp/yw2-3gx-build.exit)" = "0"
