@@ -2,14 +2,15 @@
 
 This project is built from PabloMK7's `CTRPluginFramework-BlankTemplate` and overlays a Yo-kai Watch 2 runtime tracer.
 
-## Version 0.4.0
+## Version 0.4.1
 
-- ring buffer increased from 4096 to 16384 records
+- ring buffer set to 8192 records, double the original 4096 capacity
+- fixes the CTRPF `BMP Error: Error while allocating required space` startup failure seen with 16384 records
 - complete 38-column CSV rows are written in smaller formatting chunks
 - save dialog reports stored, total, and dropped record counts
 - all menu actions remain one-shot callbacks
 
-The 16384-record buffer occupies about 2.31 MiB. At a 5 ms high-frequency hook rate it stores roughly 82 seconds before wrapping.
+The 8192-record buffer occupies about 1.16 MiB. At a 5 ms high-frequency hook rate it stores roughly 41 seconds before wrapping.
 
 ## Usage
 
