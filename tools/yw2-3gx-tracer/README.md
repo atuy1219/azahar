@@ -1,26 +1,25 @@
-# YW2 Safe Probe 3GX
+# YW2 Runtime Trace 3GX
 
-This project is built from PabloMK7's `CTRPluginFramework-BlankTemplate`.
+This project is built from PabloMK7's `CTRPluginFramework-BlankTemplate` and overlays a Yo-kai Watch 2 runtime tracer.
 
-Version 0.3.0 is intentionally non-invasive. It installs no hooks and performs no writes to game code or game memory. It only reads the current Title ID, process text range, and instruction words around the candidate addresses used by the previous tracer.
+## Version 0.4.0
 
-## Recovery from the previous build
+- ring buffer increased from 4096 to 16384 records
+- complete 38-column CSV rows are written in smaller formatting chunks
+- save dialog reports stored, total, and dropped record counts
+- all menu actions remain one-shot callbacks
 
-If the game hangs while loading a save, remove or rename the old `default.3gx` from the title's Luma3DS plugin directory and relaunch the game. Runtime hooks do not persist after the process exits.
+The 16384-record buffer occupies about 2.31 MiB. At a 5 ms high-frequency hook rate it stores roughly 82 seconds before wrapping.
 
 ## Usage
 
-1. Replace the old plugin with `YW2RuntimeTrace.3gx` from this build.
-2. Launch the game and confirm that the save loads normally.
-3. Open the CTRPF menu.
-4. Select **Safety status**. It should show `Hooks: disabled` and `Writes to game code: none`.
-5. Select **Dump target map (safe)** once.
-6. Copy `yw2_target_probe_XXXXXXXX.csv` from the plugin's 3GX directory.
+1. Launch the game without starting the trace.
+2. Load the save and wait until the Busters hub is fully usable.
+3. Open the CTRPF menu and select **Start trace** immediately before creating the room.
+4. Create the room, choose the enemy and character, and proceed to gameplay.
+5. As soon as gameplay begins, select **Stop and save trace**.
+6. Copy `yw2_trace_XXXXXXXX.csv` from the plugin's 3GX directory.
 
-The CSV contains:
+Do not start the trace before the save has finished loading. The target hooks are intended only for the analyzed game build and should be active for the shortest practical interval.
 
-- current Title ID
-- process text start and end
-- five ARM instruction words around every candidate address
-
-This probe is used to determine whether the addresses from the analyzed CIA match the executable running on the real console before code hooks are reintroduced.
+The CSV records selected control-flow addresses, r0-r12, stack pointer, callback LR, recovered game LR, eight stack words, thread ID, timestamp, and worker/active-field candidates derived from r0 and r4.
