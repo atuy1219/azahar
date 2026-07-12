@@ -1,0 +1,22 @@
+Author: atuy1219 / OpenAI
+
+Version:
+    Major: 0
+    Minor: 1
+    Revision: 0
+
+Targets:
+
+Title: YW2 Runtime Trace
+
+Summary: Runtime tracer for Yo-kai Watch 2 communication analysis
+
+Description: |
+  Captures selected game-side communication and timeout control-flow points.
+  Trace records are buffered in memory and exported as CSV from the plugin menu.
+
+Compatibility: Any
+
+MemorySize: 5MiB
+
+UsePrivateMemory: false
