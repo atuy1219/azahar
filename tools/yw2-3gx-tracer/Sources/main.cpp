@@ -64,6 +64,8 @@ static const Target kTargets[] = {
 static std::array<TraceRecord, kCapacity> g_records{};
 static volatile u32 g_next_sequence = 0;
 static volatile bool g_recording = false;
+static bool g_hooks_attempted = false;
+static bool g_session_active = false;
 static std::vector<Hook> g_hooks;
 static std::array<HookResult, sizeof(kTargets) / sizeof(kTargets[0])> g_hook_results{};
 
@@ -183,6 +185,7 @@ static void ClearTrace(void) {
 static bool InstallHooks(void) {
     DisableHooks();
     ClearTrace();
+    g_hooks_attempted = true;
 
     g_hooks.reserve(sizeof(kTargets) / sizeof(kTargets[0]));
     bool any_success = false;
@@ -198,10 +201,14 @@ static bool InstallHooks(void) {
     }
 
     g_recording = any_success;
+    g_session_active = any_success;
     return any_success;
 }
 
 static std::string BuildHookStatus(void) {
+    if (!g_hooks_attempted)
+        return "Not attempted yet. Select Start trace first.";
+
     std::string text;
     for (u32 index = 0; index < sizeof(kTargets) / sizeof(kTargets[0]); ++index) {
         text += Utils::Format("%08X %-28s %s\n", kTargets[index].address,
@@ -212,7 +219,6 @@ static std::string BuildHookStatus(void) {
 
 static bool SaveTrace(std::string &saved_path) {
     const u32 total = g_next_sequence;
-    const u32 count = std::min(total, kCapacity);
     const u32 first = total > kCapacity ? total - kCapacity : 0;
 
     saved_path = Utils::Format("yw2_trace_%08X.csv", static_cast<u32>(osGetTime()));
@@ -255,6 +261,11 @@ static bool SaveTrace(std::string &saved_path) {
 }
 
 static void StartTrace(MenuEntry *) {
+    if (g_session_active) {
+        OSD::Notify("YW2 trace is already running");
+        return;
+    }
+
     if (InstallHooks()) {
         OSD::Notify(Color::Lime << "YW2 trace started");
     } else {
@@ -263,6 +274,11 @@ static void StartTrace(MenuEntry *) {
 }
 
 static void StopAndSaveTrace(MenuEntry *) {
+    if (!g_session_active) {
+        MessageBox("YW2 trace", "Trace is not running. Select Start trace first.")();
+        return;
+    }
+
     DisableHooks();
     svcSleepThread(20 * 1000 * 1000LL);
 
@@ -274,9 +290,14 @@ static void StopAndSaveTrace(MenuEntry *) {
     } else {
         MessageBox("YW2 trace", "Failed to write the trace file.")();
     }
+    g_session_active = false;
 }
 
 static void ClearTraceMenu(MenuEntry *) {
+    if (g_session_active) {
+        MessageBox("YW2 trace", "Stop the active trace before clearing the buffer.")();
+        return;
+    }
     ClearTrace();
     OSD::Notify("YW2 trace buffer cleared");
 }
@@ -291,21 +312,22 @@ void PatchProcess(FwkSettings &) {}
 
 void OnProcessExit(void) {
     DisableHooks();
+    g_session_active = false;
 }
 
 void InitMenu(PluginMenu &menu) {
-    menu += new MenuEntry("Start trace", StartTrace,
+    menu += new MenuEntry("Start trace", nullptr, StartTrace,
                           "Installs hooks and clears the in-memory ring buffer.");
-    menu += new MenuEntry("Stop and save trace", StopAndSaveTrace,
-                          "Disables hooks and writes a CSV file in the 3GX directory.");
-    menu += new MenuEntry("Clear trace buffer", ClearTraceMenu);
-    menu += new MenuEntry("Hook status", ShowHookStatus,
-                          "Shows which target instructions could be hooked safely.");
+    menu += new MenuEntry("Stop and save trace", nullptr, StopAndSaveTrace,
+                          "Disables hooks and writes one CSV file in the 3GX directory.");
+    menu += new MenuEntry("Clear trace buffer", nullptr, ClearTraceMenu);
+    menu += new MenuEntry("Hook status", nullptr, ShowHookStatus,
+                          "Shows the result of the most recent hook installation attempt.");
 }
 
 int main(void) {
     PluginMenu *menu = new PluginMenu(
-        "YW2 Runtime Trace", 0, 1, 0,
+        "YW2 Runtime Trace", 0, 2, 0,
         "Runtime tracer for Yo-kai Watch 2 communication state analysis.\n"
         "Start trace before creating a room, then stop and save after the error.");
     menu->SynchronizeWithFrame(true);
