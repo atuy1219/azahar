@@ -28,6 +28,54 @@ struct GameInfoData {
     bool is_insertable = false;
 };
 
+Loader::SMDH::TitleLanguage GetPreferredTitleLanguage(const Loader::SMDH& smdh) {
+    using GameRegion = Loader::SMDH::GameRegion;
+    using TitleLanguage = Loader::SMDH::TitleLanguage;
+
+    const auto regions = smdh.GetRegions();
+    if (regions.size() != 1) {
+        return TitleLanguage::English;
+    }
+
+    switch (regions.front()) {
+    case GameRegion::Japan:
+        return TitleLanguage::Japanese;
+    case GameRegion::China:
+        return TitleLanguage::SimplifiedChinese;
+    case GameRegion::Korea:
+        return TitleLanguage::Korean;
+    case GameRegion::Taiwan:
+        return TitleLanguage::TraditionalChinese;
+    case GameRegion::NorthAmerica:
+    case GameRegion::Europe:
+    case GameRegion::Australia:
+        return TitleLanguage::English;
+    }
+
+    return TitleLanguage::English;
+}
+
+Loader::SMDH::TitleLanguage GetAvailableTitleLanguage(const Loader::SMDH& smdh) {
+    using TitleLanguage = Loader::SMDH::TitleLanguage;
+
+    const auto has_long_title = [&smdh](TitleLanguage language) {
+        return smdh.titles[static_cast<std::size_t>(language)].long_title[0] != u'\0';
+    };
+
+    const auto preferred = GetPreferredTitleLanguage(smdh);
+    if (has_long_title(preferred)) {
+        return preferred;
+    }
+    if (has_long_title(TitleLanguage::English)) {
+        return TitleLanguage::English;
+    }
+    if (has_long_title(TitleLanguage::Japanese)) {
+        return TitleLanguage::Japanese;
+    }
+
+    return preferred;
+}
+
 GameInfoData* GetNewGameInfoData(const std::string& path) {
     std::unique_ptr<Loader::AppLoader> loader = Loader::GetLoader(path);
     u64 program_id = 0;
@@ -129,7 +177,7 @@ jstring Java_org_citra_citra_1emu_model_GameInfo_getTitle(JNIEnv* env, jobject o
         return ToJString(env, "");
     }
 
-    Loader::SMDH::TitleLanguage language = Loader::SMDH::TitleLanguage::English;
+    const auto language = GetAvailableTitleLanguage(*smdh);
 
     // Get the title from SMDH in UTF-16 format
     std::u16string title{reinterpret_cast<char16_t*>(
@@ -144,9 +192,9 @@ jstring Java_org_citra_citra_1emu_model_GameInfo_getCompany(JNIEnv* env, jobject
         return ToJString(env, "");
     }
 
-    Loader::SMDH::TitleLanguage language = Loader::SMDH::TitleLanguage::English;
+    const auto language = GetAvailableTitleLanguage(*smdh);
 
-    // Get the Publisher's name from SMDH in UTF-16 format
+    // Get the Publisher's name from the same localized SMDH entry as the title
     char16_t* publisher;
     publisher = reinterpret_cast<char16_t*>(
         smdh->titles[static_cast<std::size_t>(language)].publisher.data());
