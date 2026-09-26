@@ -8,7 +8,9 @@
 #include <vector>
 
 #include "common/string_util.h"
+#include "core/core.h"
 #include "core/hle/service/am/am.h"
+#include "core/hle/service/cfg/cfg.h"
 #include "core/hle/service/fs/archive.h"
 #include "core/loader/loader.h"
 #include "core/loader/smdh.h"
@@ -28,28 +30,36 @@ struct GameInfoData {
     bool is_insertable = false;
 };
 
-Loader::SMDH::TitleLanguage GetPreferredTitleLanguage(const Loader::SMDH& smdh) {
-    using GameRegion = Loader::SMDH::GameRegion;
+Loader::SMDH::TitleLanguage GetPreferredTitleLanguage() {
+    using SystemLanguage = Service::CFG::SystemLanguage;
     using TitleLanguage = Loader::SMDH::TitleLanguage;
 
-    const auto regions = smdh.GetRegions();
-    if (regions.size() != 1) {
-        return TitleLanguage::English;
-    }
-
-    switch (regions.front()) {
-    case GameRegion::Japan:
+    const auto cfg = Service::CFG::GetModule(Core::System::GetInstance());
+    switch (static_cast<SystemLanguage>(cfg->GetSystemLanguage())) {
+    case Service::CFG::LANGUAGE_JP:
         return TitleLanguage::Japanese;
-    case GameRegion::China:
-        return TitleLanguage::SimplifiedChinese;
-    case GameRegion::Korea:
-        return TitleLanguage::Korean;
-    case GameRegion::Taiwan:
-        return TitleLanguage::TraditionalChinese;
-    case GameRegion::NorthAmerica:
-    case GameRegion::Europe:
-    case GameRegion::Australia:
+    case Service::CFG::LANGUAGE_EN:
         return TitleLanguage::English;
+    case Service::CFG::LANGUAGE_FR:
+        return TitleLanguage::French;
+    case Service::CFG::LANGUAGE_DE:
+        return TitleLanguage::German;
+    case Service::CFG::LANGUAGE_IT:
+        return TitleLanguage::Italian;
+    case Service::CFG::LANGUAGE_ES:
+        return TitleLanguage::Spanish;
+    case Service::CFG::LANGUAGE_ZH:
+        return TitleLanguage::SimplifiedChinese;
+    case Service::CFG::LANGUAGE_KO:
+        return TitleLanguage::Korean;
+    case Service::CFG::LANGUAGE_NL:
+        return TitleLanguage::Dutch;
+    case Service::CFG::LANGUAGE_PT:
+        return TitleLanguage::Portuguese;
+    case Service::CFG::LANGUAGE_RU:
+        return TitleLanguage::Russian;
+    case Service::CFG::LANGUAGE_TW:
+        return TitleLanguage::TraditionalChinese;
     }
 
     return TitleLanguage::English;
@@ -62,7 +72,7 @@ Loader::SMDH::TitleLanguage GetAvailableTitleLanguage(const Loader::SMDH& smdh) 
         return smdh.titles[static_cast<std::size_t>(language)].long_title[0] != u'\0';
     };
 
-    const auto preferred = GetPreferredTitleLanguage(smdh);
+    const auto preferred = GetPreferredTitleLanguage();
     if (has_long_title(preferred)) {
         return preferred;
     }
@@ -71,6 +81,12 @@ Loader::SMDH::TitleLanguage GetAvailableTitleLanguage(const Loader::SMDH& smdh) 
     }
     if (has_long_title(TitleLanguage::Japanese)) {
         return TitleLanguage::Japanese;
+    }
+
+    for (std::size_t i = 0; i < smdh.titles.size(); ++i) {
+        if (smdh.titles[i].long_title[0] != u'\0') {
+            return static_cast<TitleLanguage>(i);
+        }
     }
 
     return preferred;
