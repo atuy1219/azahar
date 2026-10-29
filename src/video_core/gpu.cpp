@@ -2,6 +2,7 @@
 // Licensed under GPLv3 or any later version
 // Refer to the LICENSE.txt file included.
 
+#include "core/yw_event_trace.h"
 #include "common/archives.h"
 #include "common/hacks/hack_manager.h"
 #include "common/microprofile.h"
@@ -161,6 +162,7 @@ void GPU::ClearAll(bool flush) {
 
 Result GPU::Execute(const Service::GSP::Command& command) {
     using Service::GSP::CommandId;
+    YWTrace::Emit("gsp_execute");
     auto& regs = impl->pica.regs;
     Result result = ResultSuccess;
 
@@ -474,6 +476,7 @@ void GPU::SubmitCmdList(u32 index) {
     // Forward command list processing to the PICA core.
     const PAddr addr = config.GetPhysicalAddress(index);
     const u32 size = config.GetSize(index);
+    YWTrace::Emit("gsp_submit_cmdlist", {index, addr, size});
 
     // Do not process the list if the memory range is not sane.
     auto& memory = impl->system.Memory();
@@ -485,6 +488,7 @@ void GPU::SubmitCmdList(u32 index) {
         return;
     }
 
+    YWTrace::CmdList(addr, head, size);
     impl->pica.ProcessCmdList(addr, size,
                               !right_eye_disabler->ShouldAllowCmdQueueTrigger(addr, size));
     config.trigger[index] = 0;
@@ -569,6 +573,7 @@ void GPU::VBlankCallback(std::uintptr_t user_data, s64 cycles_late) {
     impl->signal_interrupt(Service::GSP::InterruptId::PDC1, 0);
 
     // Present renderered frame.
+    YWTrace::Emit("gpu_vblank");
     impl->renderer->SwapBuffers();
 
     // Reschedule recurrent event

@@ -2,6 +2,7 @@
 // Licensed under GPLv3 or any later version
 // Refer to the LICENSE.txt file included.
 
+#include "core/yw_event_trace.h"
 #include <algorithm>
 #include <boost/serialization/unique_ptr.hpp>
 #include "common/archives.h"
@@ -58,6 +59,7 @@ void File::Read(Kernel::HLERequestContext& ctx) {
     IPC::RequestParser rp(ctx);
     u64 offset = rp.Pop<u64>();
     u32 length = rp.Pop<u32>();
+    YWTrace::Emit("fs_read", {offset, length}, GetName());
     LOG_TRACE(Service_FS, "Read {}: offset=0x{:x} length=0x{:08X}", GetName(), offset, length);
 
     const FileSessionSlot* file = GetSessionData(ctx.Session());

@@ -2,6 +2,7 @@
 // Licensed under GPLv2 or any later version
 // Refer to the misc/licenses/gplv2.txt file included.
 
+#include "core/yw_event_trace.h"
 #include <csignal>
 #include <cstring>
 #include <dynarmic/interface/A32/a32.h>
@@ -87,6 +88,7 @@ public:
     }
 
     void CallSVC(std::uint32_t swi) override {
+        YWTrace::Emit("arm_svc", {parent.GetID(), parent.GetPC(), parent.GetReg(14), swi});
         svc_context.CallSVC(swi);
     }
 
@@ -161,6 +163,7 @@ public:
     }
 
     void AddTicks(std::uint64_t ticks) override {
+        YWTrace::Emit("arm_jit_ticks", {parent.GetID(), parent.GetPC(), ticks});
         parent.GetTimer().AddTicks(ticks);
     }
     std::uint64_t GetTicksRemaining() override {
@@ -196,7 +199,17 @@ void ARM_Dynarmic::Run() {
         return;
     }
 
-    jit->Run();
+    YWTrace::Emit("arm_run_enter", {GetID(), GetPC(), GetReg(14), GetReg(13)});
+    if (YWTrace::ClaimStep()) {
+        do {
+            YWTrace::Emit("arm_instruction", {GetID(), GetPC(), GetReg(14), GetReg(13)});
+            jit->Step();
+        } while (!break_flag && GetTimer().GetDowncount() > 0 && YWTrace::ClaimStep());
+        if (!break_flag && GetTimer().GetDowncount() > 0) jit->Run();
+    } else {
+        jit->Run();
+    }
+    YWTrace::Emit("arm_run_exit", {GetID(), GetPC(), GetReg(14), GetReg(13)});
 }
 
 void ARM_Dynarmic::Step() {
