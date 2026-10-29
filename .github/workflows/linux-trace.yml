@@ -1,0 +1,44 @@
+name: Linux ARM11/PICA/FS trace AppImage
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    name: Build Linux x86_64
+    timeout-minutes: 120
+    container:
+      image: opensauce04/azahar-build-environment:latest
+      options: -u 1001
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_COMPILERCHECK: content
+      CCACHE_SLOPPINESS: time_macros
+      OS: linux
+      TARGET: appimage
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: yw2/linux-only-trace
+          submodules: recursive
+      - uses: actions/cache@v5
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: linux-trace-appimage-${{ github.sha }}
+          restore-keys: |
+            linux-trace-appimage-
+      - name: Build AppImage
+        run: ./.ci/linux.sh
+      - name: Collect AppImage
+        run: |
+          mkdir -p artifacts
+          mv build/bundle/*.AppImage artifacts/
+      - uses: actions/upload-artifact@v7
+        with:
+          name: azahar-linux-x86_64-arm11-pica-fs-trace
+          path: artifacts/*.AppImage
+          if-no-files-found: error
