@@ -2,6 +2,7 @@
 // Licensed under GPLv3 or any later version
 // Refer to the LICENSE.txt file included.
 
+#include "core/yw_event_trace.h"
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/unordered_map.hpp>
 #include <cryptopp/aes.h>
@@ -66,6 +67,7 @@ void FS_USER::OpenFile(Kernel::HLERequestContext& ctx) {
     std::vector<u8> filename = rp.PopStaticBuffer();
     ASSERT(filename.size() == filename_size);
     const FileSys::Path file_path(filename_type, std::move(filename));
+    YWTrace::Emit("fs_open", {}, file_path.DebugStr());
 
     LOG_DEBUG(Service_FS, "path={}, mode={} attrs={}", file_path.DebugStr(), mode.hex, attributes);
 
@@ -151,6 +153,7 @@ void FS_USER::OpenFileDirectly(Kernel::HLERequestContext& ctx) {
     ASSERT(filename.size() == filename_size);
     const FileSys::Path archive_path(archivename_type, std::move(archivename));
     const FileSys::Path file_path(filename_type, std::move(filename));
+    YWTrace::Emit("fs_open_direct", {}, file_path.DebugStr());
 
     LOG_DEBUG(Service_FS, "archive_id=0x{:08X} archive_path={} file_path={}, mode={} attributes={}",
               archive_id, archive_path.DebugStr(), file_path.DebugStr(), mode.hex, attributes);
