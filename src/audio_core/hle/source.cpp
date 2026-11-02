@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
+#include <cstdlib>
 #include "audio_core/codec.h"
 #include "audio_core/hle/common.h"
 #include "audio_core/hle/source.h"
@@ -13,6 +15,24 @@
 #include "core/memory.h"
 
 namespace AudioCore::HLE {
+
+// Optional source-level DSP trace for YW2 BGM investigations.
+// Enable with YW2_AUDIO_TRACE=1 in a Linux Azahar debug session.
+// No sample payloads are logged. All instrumentation is inert by default.
+namespace {
+ bool Yw2AudioTraceEnabled() {
+     static const bool enabled = [] {
+         const char* value = std::getenv("YW2_AUDIO_TRACE");
+         return value && value[0] == '1' && value[1] == '\0';
+     }();
+     return enabled;
+ }
+
+ std::int64_t Yw2HostMonotonicNs() {
+     using namespace std::chrono;
+     return duration_cast<nanoseconds>(steady_clock::now().time_since_epoch()).count();
+ }
+} // namespace
 
 SourceStatus::Status Source::Tick(SourceConfiguration::Configuration& config,
                                   const s16_le (&adpcm_coeffs)[16]) {
@@ -101,6 +121,11 @@ void Source::ParseConfig(SourceConfiguration::Configuration& config,
     }
 
     if (config.enable_dirty) {
+        if (Yw2AudioTraceEnabled()) {
+            LOG_INFO(Audio_DSP, "YW2DSP event=enable host_ns={} source={} enabled={} sync={}",
+                     Yw2HostMonotonicNs(), source_id, static_cast<u32>(config.enable),
+                     static_cast<u32>(config.sync_count));
+        }
         config.enable_dirty.Assign(0);
         state.enabled = config.enable != 0;
         LOG_TRACE(Audio_DSP, "source_id={} enable={}", source_id, state.enabled);
@@ -280,6 +305,15 @@ void Source::ParseConfig(SourceConfiguration::Configuration& config,
     }
 
     if (config.embedded_buffer_dirty) {
+        if (Yw2AudioTraceEnabled()) {
+            LOG_INFO(Audio_DSP,
+                     "YW2DSP event=enqueue_embedded host_ns={} source={} addr={:#010x} "
+                     "length={} id={} loop={} play_position={}",
+                     Yw2HostMonotonicNs(), source_id,
+                     static_cast<u32>(config.physical_address), static_cast<u32>(config.length),
+                     static_cast<u32>(config.buffer_id), static_cast<u32>(config.is_looping),
+                     static_cast<u32>(play_position));
+        }
         config.embedded_buffer_dirty.Assign(0);
         // HACK
         // Luigi's Mansion Dark Moon configures the embedded buffer with an extremely large value
@@ -327,6 +361,14 @@ void Source::ParseConfig(SourceConfiguration::Configuration& config,
         for (std::size_t i = 0; i < 4; i++) {
             if (config.buffers_dirty & (1 << i)) {
                 const auto& b = config.buffers[i];
+                if (Yw2AudioTraceEnabled()) {
+                    LOG_INFO(Audio_DSP,
+                             "YW2DSP event=enqueue_queued host_ns={} source={} slot={} "
+                             "addr={:#010x} length={} id={} loop={}",
+                             Yw2HostMonotonicNs(), source_id, i,
+                             static_cast<u32>(b.physical_address), static_cast<u32>(b.length),
+                             static_cast<u32>(b.buffer_id), static_cast<u32>(b.is_looping));
+                }
                 if (static_cast<s32>(b.length) < 0) {
                     LOG_ERROR(Audio_DSP,
                               "Skipping buffer queue sample! Game passed in improper value for "
@@ -492,6 +534,15 @@ bool Source::DequeueBuffer() {
     state.current_buffer_format = buf.format;
     state.current_buffer_is_looping = buf.is_looping;
     state.current_buffer_id = buf.buffer_id;
+    if (Yw2AudioTraceEnabled()) {
+        LOG_INFO(Audio_DSP,
+                 "YW2DSP event=dequeue host_ns={} source={} addr={:#010x} "
+                 "length={} id={} loop={} played_before={} play_position={}",
+                 Yw2HostMonotonicNs(), source_id,
+                 static_cast<u32>(buf.physical_address), static_cast<u32>(buf.length),
+                 static_cast<u32>(buf.buffer_id), static_cast<u32>(buf.is_looping),
+                 static_cast<u32>(buf.has_played), static_cast<u32>(buf.play_position));
+    }
     state.last_buffer_id = 0;
     state.buffer_update = buf.from_queue && !buf.has_played;
 
