@@ -1,3 +1,7 @@
+// Copyright 2026 Citra Emulator Project / Azahar Emulator Project
+// Licensed under GPLv3 or any later version
+// Refer to the LICENSE.txt file included.
+
 // Copyright 2016-2026 Citra Emulator Project / Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the misc/licenses/gplv2.txt file included.
@@ -21,18 +25,18 @@ namespace AudioCore::HLE {
 // Enable with YW2_AUDIO_TRACE=1 in a Linux Azahar debug session.
 // No sample payloads are logged. All instrumentation is inert by default.
 namespace {
- bool Yw2AudioTraceEnabled() {
-     static const bool enabled = [] {
-         const char* value = std::getenv("YW2_AUDIO_TRACE");
-         return value && value[0] == '1' && value[1] == '\0';
-     }();
-     return enabled;
- }
+bool Yw2AudioTraceEnabled() {
+    static const bool enabled = [] {
+        const char* value = std::getenv("YW2_AUDIO_TRACE");
+        return value && value[0] == '1' && value[1] == '\0';
+    }();
+    return enabled;
+}
 
- std::int64_t Yw2HostMonotonicNs() {
-     using namespace std::chrono;
-     return duration_cast<nanoseconds>(steady_clock::now().time_since_epoch()).count();
- }
+std::int64_t Yw2HostMonotonicNs() {
+    using namespace std::chrono;
+    return duration_cast<nanoseconds>(steady_clock::now().time_since_epoch()).count();
+}
 } // namespace
 
 SourceStatus::Status Source::Tick(SourceConfiguration::Configuration& config,
@@ -233,8 +237,7 @@ void Source::ParseConfig(SourceConfiguration::Configuration& config,
     if (config.play_position_dirty) {
         if (Yw2AudioTraceEnabled()) {
             LOG_INFO(Audio_DSP, "YW2DSP event=seek host_ns={} source={} position={}",
-                     Yw2HostMonotonicNs(), source_id,
-                     static_cast<u32>(config.play_position));
+                     Yw2HostMonotonicNs(), source_id, static_cast<u32>(config.play_position));
         }
         config.play_position_dirty.Assign(0);
         play_position = config.play_position;
@@ -322,10 +325,9 @@ void Source::ParseConfig(SourceConfiguration::Configuration& config,
             LOG_INFO(Audio_DSP,
                      "YW2DSP event=enqueue_embedded host_ns={} source={} addr={:#010x} "
                      "length={} id={} loop={} play_position={}",
-                     Yw2HostMonotonicNs(), source_id,
-                     static_cast<u32>(config.physical_address), static_cast<u32>(config.length),
-                     static_cast<u32>(config.buffer_id), static_cast<u32>(config.is_looping),
-                     static_cast<u32>(play_position));
+                     Yw2HostMonotonicNs(), source_id, static_cast<u32>(config.physical_address),
+                     static_cast<u32>(config.length), static_cast<u32>(config.buffer_id),
+                     static_cast<u32>(config.is_looping), static_cast<u32>(play_position));
         }
         config.embedded_buffer_dirty.Assign(0);
         // HACK
@@ -555,10 +557,10 @@ bool Source::DequeueBuffer() {
         LOG_INFO(Audio_DSP,
                  "YW2DSP event=dequeue host_ns={} source={} addr={:#010x} "
                  "length={} id={} loop={} played_before={} play_position={}",
-                 Yw2HostMonotonicNs(), source_id,
-                 static_cast<u32>(buf.physical_address), static_cast<u32>(buf.length),
-                 static_cast<u32>(buf.buffer_id), static_cast<u32>(buf.is_looping),
-                 static_cast<u32>(buf.has_played), static_cast<u32>(buf.play_position));
+                 Yw2HostMonotonicNs(), source_id, static_cast<u32>(buf.physical_address),
+                 static_cast<u32>(buf.length), static_cast<u32>(buf.buffer_id),
+                 static_cast<u32>(buf.is_looping), static_cast<u32>(buf.has_played),
+                 static_cast<u32>(buf.play_position));
     }
     state.last_buffer_id = 0;
     state.buffer_update = buf.from_queue && !buf.has_played;
