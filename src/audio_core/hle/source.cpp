@@ -231,12 +231,24 @@ void Source::ParseConfig(SourceConfiguration::Configuration& config,
     // This will be the starting sample for the first time the buffer is played.
     u32_dsp play_position = {};
     if (config.play_position_dirty) {
+        if (Yw2AudioTraceEnabled()) {
+            LOG_INFO(Audio_DSP, "YW2DSP event=seek host_ns={} source={} position={}",
+                     Yw2HostMonotonicNs(), source_id,
+                     static_cast<u32>(config.play_position));
+        }
         config.play_position_dirty.Assign(0);
         play_position = config.play_position;
     }
 
     // TODO(xperia64): Is this in the correct spot in terms of the bit handling order?
     if (config.partial_embedded_buffer_dirty) {
+        if (Yw2AudioTraceEnabled()) {
+            LOG_INFO(Audio_DSP,
+                     "YW2DSP event=update_embedded host_ns={} source={} "
+                     "length={} id={} loop={}",
+                     Yw2HostMonotonicNs(), source_id, static_cast<u32>(config.length),
+                     static_cast<u32>(config.buffer_id), static_cast<u32>(config.is_looping));
+        }
         config.partial_embedded_buffer_dirty.Assign(0);
 
         // As this bit is set by the game, three config options are also updated:
@@ -352,6 +364,10 @@ void Source::ParseConfig(SourceConfiguration::Configuration& config,
     }
 
     if (config.loop_related_dirty && config.loop_related != 0) {
+        if (Yw2AudioTraceEnabled()) {
+            LOG_INFO(Audio_DSP, "YW2DSP event=loop_related host_ns={} source={} value={:#010x}",
+                     Yw2HostMonotonicNs(), source_id, static_cast<u32>(config.loop_related));
+        }
         config.loop_related_dirty.Assign(0);
         LOG_WARNING(Audio_DSP, "Unhandled complex loop with loop_related={:#010x}",
                     static_cast<u32>(config.loop_related));
