@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cstdint>
 #include <cstdlib>
 #include "audio_core/codec.h"
 #include "audio_core/hle/common.h"
